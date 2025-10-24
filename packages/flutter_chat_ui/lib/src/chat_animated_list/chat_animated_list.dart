@@ -406,6 +406,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
         // Order for CustomScrollView(reverse: false) -> Visual Top to Bottom
         return <Widget>[
           // Visually at the top
+          _buildComposerHeightSliver(context),
           if (widget.topPadding != null)
             SliverPadding(padding: EdgeInsets.only(top: widget.topPadding!)),
           if (widget.topSliver != null) widget.topSliver!,
@@ -414,7 +415,6 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
           if (widget.onStartReached != null)
             _buildStartLoadMoreSliver(builders),
           if (widget.bottomSliver != null) widget.bottomSliver!,
-          _buildComposerHeightSliver(context),
           // Visually at the bottom
         ];
       }
