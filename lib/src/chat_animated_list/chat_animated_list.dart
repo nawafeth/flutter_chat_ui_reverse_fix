@@ -560,6 +560,9 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
   }
 
   void _initialScrollToEnd() async {
+    if(widget.reversed) {
+      return;
+    }
     // Delay the scroll to the end animation so new message is painted, otherwise
     // maxScrollExtent is not yet updated and the animation might not work.
     await Future.delayed(widget.insertAnimationDuration);
