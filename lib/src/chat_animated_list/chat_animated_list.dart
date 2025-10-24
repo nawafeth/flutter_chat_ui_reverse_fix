@@ -560,9 +560,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
   }
 
   void _initialScrollToEnd() async {
-    if(widget.reversed) {
-      return;
-    }
+
     // Delay the scroll to the end animation so new message is painted, otherwise
     // maxScrollExtent is not yet updated and the animation might not work.
     await Future.delayed(widget.insertAnimationDuration);
@@ -585,6 +583,9 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
   }
 
   void _subsequentScrollToEnd(Message data) async {
+    if(widget.reversed) {
+      return;
+    }
     // Skip auto-scrolling based on configuration.
     // For reversed lists, scrolling is skipped if `shouldScrollToEndWhenSendingMessage` is false.
     // For non-reversed lists, scrolling is skipped if *both* `shouldScrollToEndWhenSendingMessage`
