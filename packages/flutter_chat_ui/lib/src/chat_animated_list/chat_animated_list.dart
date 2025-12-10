@@ -427,6 +427,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
           if (widget.bottomSliver != null) widget.bottomSliver!,
           _buildComposerHeightSliver(context),
           // Visually at the bottom
+
         ];
       }
     }
