@@ -624,7 +624,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
       return;
     }
 
-    final currentUserId = context.read<UserID>();
+    // final currentUserId = context.read<UserID>();
 
     // When the user sends a new message, automatically scroll back to
     // the bottom to show their message.
@@ -632,7 +632,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
     // to the most recent messages. After scrolling, exit the function since
     // no other scroll behavior is needed.
     if (widget.shouldScrollToEndWhenSendingMessage == true &&
-        currentUserId == data.authorId &&
+        // currentUserId == data.authorId &&
         _oldList.last.id == data.id) {
       // When scrolled up in chat history use fling to guarantee scrolling
       // to the very end of the list.
