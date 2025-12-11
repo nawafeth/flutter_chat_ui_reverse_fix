@@ -207,15 +207,18 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
 
   bool _userHasScrolled = false;
   bool _isScrollingToBottom = false;
+
   // This flag is used to determine if we already adjusted the initial
   // scroll position (so we can see latest messages when we enter chat)
   late bool _needsInitialScrollPositionAdjustment;
   MessageID _lastInsertedMessageId = '';
+
   // Controls whether pagination should be triggered when scrolling to the top.
   // Set to true when user scrolls up, and false after pagination is triggered.
   // This prevents infinite pagination loops when reaching the end of available messages,
   // ensuring onEndReached only fires once per user scroll gesture.
   bool _paginationShouldTrigger = false;
+
   // This flag prevents infinite pagination loops when reaching the start of available messages.
   bool _startPaginationShouldTrigger = false;
 
@@ -226,7 +229,8 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
     _scrollController = widget.scrollController ?? ScrollController();
     _observerController = SliverObserverController(
       controller: _scrollController,
-    )..cacheJumpIndexOffset = false;
+    )
+      ..cacheJumpIndexOffset = false;
 
     _oldList = List.from(_chatController.messages);
     _oldListEmptyNotifier = ValueNotifier(_oldList.isEmpty);
@@ -276,35 +280,54 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
     }
   }
 
+
   void onKeyboardHeightChanged(double height) {
     // Reversed lists handle keyboard automatically
     if (widget.reversed) {
       return;
     }
-
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || !_scrollController.hasClients || height == 0) {
         return;
       }
 
-      if (widget.scrollToEndAnimationDuration == Duration.zero) {
-        _scrollController.jumpTo(
-          min(
-            _scrollController.offset + height,
-            _scrollController.position.maxScrollExtent,
-          ),
-        );
+      // Calculate the distance from the bottom of the list.
+      // Since the keyboard opened, the list has grown by 'height'.
+      // If the user WAS at the bottom, the 'extentAfter' will now be approximately equal to 'height'.
+      // We add a small threshold (e.g., 50.0) to account for minor pixel differences.
+      final double distanceFromBottom = _scrollController.position.extentAfter;
+      final bool isAtBottom = distanceFromBottom < (height + 50.0);
+
+      // ONLY scroll if the user was previously at the bottom.
+      if (isAtBottom) {
+        if (widget.scrollToEndAnimationDuration == Duration.zero) {
+          _scrollController.jumpTo(
+            height == 0 ? max(
+              _scrollController.offset + height,
+              _scrollController.position.maxScrollExtent,
+            ) :
+            min(
+              _scrollController.offset + height,
+              _scrollController.position.maxScrollExtent,
+            ),
+          );
+        } else {
+          await _scrollController.animateTo(
+            min(
+              _scrollController.offset + height,
+              _scrollController.position.maxScrollExtent,
+            ),
+            duration: widget.scrollToEndAnimationDuration,
+            curve: Curves.linearToEaseOut,
+          );
+        }
       } else {
-        await _scrollController.animateTo(
-          min(
-            _scrollController.offset + height,
-            _scrollController.position.maxScrollExtent,
-          ),
-          duration: widget.scrollToEndAnimationDuration,
-          curve: Curves.linearToEaseOut,
-        );
+        // The user is reading history. Do not change the scroll position.
+        // The viewport will shrink, but the content offset stays the same,
+        // keeping the message they are looking at visible.
+        print("User is reading history, skipping auto-scroll.");
       }
-      // we don't want to show the scroll to bottom button when automatically scrolling content with keyboard
+
       _scrollToBottomShowTimer?.cancel();
     });
   }
@@ -377,18 +400,18 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
       },
       itemBuilder:
           (BuildContext context, int index, Animation<double> animation) {
-            final message = _oldList[visualPosition(index)];
+        final message = _oldList[visualPosition(index)];
 
-            return widget.itemBuilder(
-              context,
-              message,
-              visualPosition(index),
-              animation,
-              messagesGroupingMode: widget.messagesGroupingMode,
-              messageGroupingTimeoutInSeconds:
-                  widget.messageGroupingTimeoutInSeconds,
-            );
-          },
+        return widget.itemBuilder(
+          context,
+          message,
+          visualPosition(index),
+          animation,
+          messagesGroupingMode: widget.messagesGroupingMode,
+          messageGroupingTimeoutInSeconds:
+          widget.messageGroupingTimeoutInSeconds,
+        );
+      },
     );
 
     List<Widget> buildSlivers() {
@@ -480,16 +503,16 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
               reverse: widget.reversed,
               physics: widget.physics,
               keyboardDismissBehavior:
-                  widget.keyboardDismissBehavior ??
+              widget.keyboardDismissBehavior ??
                   ScrollViewKeyboardDismissBehavior.manual,
               slivers: buildSlivers(), // Use the new helper method
             ),
           ),
           builders.scrollToBottomBuilder?.call(
-                context,
-                _scrollToBottomAnimation,
-                _handleScrollToBottom,
-              ) ??
+            context,
+            _scrollToBottomAnimation,
+            _handleScrollToBottom,
+          ) ??
               ScrollToBottom(
                 animation: _scrollToBottomAnimation,
                 onPressed: _handleScrollToBottom,
@@ -500,7 +523,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
               if (isEmpty) {
                 return Positioned.fill(
                   child:
-                      builders.emptyChatListBuilder?.call(context) ??
+                  builders.emptyChatListBuilder?.call(context) ??
                       const EmptyChatList(),
                 );
               }
@@ -512,11 +535,14 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
     );
   }
 
-  Widget _buildComposerHeightSliver(BuildContext context) => SliverSpacing(
-    bottomPadding: widget.bottomPadding,
-    handleSafeArea: widget.handleSafeArea,
-    onKeyboardHeightChanged: widget.reversed ? null : onKeyboardHeightChanged,
-  );
+  Widget _buildComposerHeightSliver(BuildContext context) =>
+      SliverSpacing(
+        bottomPadding: widget.bottomPadding,
+        handleSafeArea: widget.handleSafeArea,
+        onKeyboardHeightChanged: widget.reversed
+            ? null
+            : onKeyboardHeightChanged,
+      );
 
   Widget _buildLoadMoreSliver(Builders builders) {
     return SliverToBoxAdapter(
@@ -638,7 +664,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
       if (!widget.reversed && _userHasScrolled) {
         _scrollAnimationController.value =
             _scrollController.offset /
-            _scrollController.position.maxScrollExtent;
+                _scrollController.position.maxScrollExtent;
         await _scrollAnimationController.fling();
       } else {
         if (widget.scrollToEndAnimationDuration == Duration.zero) {
@@ -658,7 +684,9 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
   void _scrollToEnd(Message data) {
     // Used during pagination. Here we prevent scrolling to the end
     // when adding new messages with pagination.
-    if (context.read<LoadMoreNotifier>().isLoadingNewer) return;
+    if (context
+        .read<LoadMoreNotifier>()
+        .isLoadingNewer) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients || !mounted) return;
@@ -733,7 +761,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
         // maxScrollExtent is not.
         _scrollAnimationController.value =
             _scrollController.offset /
-            _scrollController.position.maxScrollExtent;
+                _scrollController.position.maxScrollExtent;
         _scrollAnimationController.fling();
       }
 
@@ -750,7 +778,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
       if (_shouldShowScrollToBottomButton) {
         _scrollToBottomShowTimer = Timer(
           widget.scrollToBottomAppearanceDelay,
-          () {
+              () {
             if (mounted) {
               // If we show scroll to bottom that means user is viewing the history
               // so we set `_userHasScrolled` to true.
@@ -785,7 +813,9 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
     // --- Handle reaching the end (older messages) ---
     if (widget.onEndReached != null &&
         _paginationShouldTrigger &&
-        !context.read<LoadMoreNotifier>().isLoadingOlder) {
+        !context
+            .read<LoadMoreNotifier>()
+            .isLoadingOlder) {
       // Get the threshold for pagination, defaulting to the very top of the list
       var threshold = (widget.paginationThreshold ?? 0);
       if (widget.reversed) {
@@ -814,10 +844,10 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
             if (_listKey.currentContext != null) {
               final notificationResult = await _observerController
                   .dispatchOnceObserve(
-                    sliverContext: _listKey.currentContext!,
-                    isForce: true,
-                    isDependObserveCallback: false,
-                  );
+                sliverContext: _listKey.currentContext!,
+                isForce: true,
+                isDependObserveCallback: false,
+              );
               final firstItem = notificationResult
                   .observeResult
                   ?.innerDisplayingChildModelList
@@ -862,7 +892,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
             final didAddMessages = _oldList.length > initialMessagesCount!;
             if (didAddMessages && anchorMessageId != null) {
               final newIndex = _oldList.indexWhere(
-                (m) => m.id == anchorMessageId,
+                    (m) => m.id == anchorMessageId,
               );
               if (newIndex != -1) {
                 _scrollToIndex(
@@ -887,7 +917,9 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
     // --- Handle reaching the start (newer messages) ---
     if (widget.onStartReached != null &&
         _startPaginationShouldTrigger &&
-        !context.read<LoadMoreNotifier>().isLoadingNewer) {
+        !context
+            .read<LoadMoreNotifier>()
+            .isLoadingNewer) {
       var threshold = widget.startPaginationThreshold ?? 1;
       if (widget.reversed) {
         threshold = 1 - threshold;
@@ -912,10 +944,10 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
             if (_listKey.currentContext != null) {
               final notificationResult = await _observerController
                   .dispatchOnceObserve(
-                    sliverContext: _listKey.currentContext!,
-                    isForce: true,
-                    isDependObserveCallback: false,
-                  );
+                sliverContext: _listKey.currentContext!,
+                isForce: true,
+                isDependObserveCallback: false,
+              );
               final firstItem = notificationResult
                   .observeResult
                   ?.innerDisplayingChildModelList
@@ -953,7 +985,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
             final didAddMessages = _oldList.length > initialMessagesCount!;
             if (didAddMessages && anchorMessageId != null) {
               final newIndex = _oldList.indexWhere(
-                (m) => m.id == anchorMessageId,
+                    (m) => m.id == anchorMessageId,
               );
               if (newIndex != -1) {
                 final composerHeight = context
@@ -978,8 +1010,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
   }
 
   /// Scrolls to a specific message by ID.
-  Future<void> _scrollToMessageId(
-    MessageID messageId, {
+  Future<void> _scrollToMessageId(MessageID messageId, {
     Duration duration = const Duration(milliseconds: 250),
     Curve curve = Curves.linearToEaseOut,
     double alignment = 0,
@@ -1000,8 +1031,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
   }
 
   /// Scrolls to a specific index in the message list.
-  Future<void> _scrollToIndex(
-    int index, {
+  Future<void> _scrollToIndex(int index, {
     Duration duration = const Duration(milliseconds: 250),
     Curve curve = Curves.linearToEaseOut,
     double alignment = 0,
@@ -1042,11 +1072,9 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
     }
   }
 
-  void _onInserted(
-    final int position,
-    final Message data,
-    final bool animated,
-  ) {
+  void _onInserted(final int position,
+      final Message data,
+      final bool animated,) {
     // If for some reason `_userHasScrolled` is true and the user is not at the bottom of the list,
     // set `_userHasScrolled` to false
     if (_userHasScrolled && _isAtChatEndScrollPosition) {
@@ -1064,7 +1092,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
       if (widget.insertAnimationDurationResolver != null) {
         duration =
             widget.insertAnimationDurationResolver!(data) ??
-            widget.insertAnimationDuration;
+                widget.insertAnimationDuration;
       } else {
         duration = widget.insertAnimationDuration;
       }
@@ -1090,11 +1118,9 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
     _scrollToEnd(data);
   }
 
-  void _onInsertedAll(
-    final int position,
-    List<Message> messagesToInsert,
-    final bool animated,
-  ) {
+  void _onInsertedAll(final int position,
+      List<Message> messagesToInsert,
+      final bool animated,) {
     // If for some reason `_userHasScrolled` is true and the user is not at the bottom of the list,
     // set `_userHasScrolled` to false
     if (_userHasScrolled && _isAtChatEndScrollPosition) {
@@ -1112,7 +1138,7 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
       if (widget.insertAnimationDurationResolver != null) {
         duration =
             widget.insertAnimationDurationResolver!(messagesToInsert.last) ??
-            widget.insertAnimationDuration;
+                widget.insertAnimationDuration;
       } else {
         duration = widget.insertAnimationDuration;
       }
@@ -1159,9 +1185,9 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
     // Use animation duration resolver if provided, otherwise use default duration.
     final duration = animated
         ? widget.removeAnimationDurationResolver != null
-              ? (widget.removeAnimationDurationResolver!(data) ??
-                    widget.removeAnimationDuration)
-              : widget.removeAnimationDuration
+        ? (widget.removeAnimationDurationResolver!(data) ??
+        widget.removeAnimationDuration)
+        : widget.removeAnimationDuration
         : Duration.zero;
 
     // Calculate the visual index for SliverAnimatedList.removeItem BEFORE modifying _oldList.
@@ -1173,25 +1199,25 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
 
     _listKey.currentState!.removeItem(
       visualIndex, // Use the pre-calculated visual index.
-      (context, animation) => widget.itemBuilder(
-        context,
-        data, // Pass the actual message data being removed.
-        position, // Pass its original position.
-        animation,
-        messagesGroupingMode: widget.messagesGroupingMode,
-        messageGroupingTimeoutInSeconds: widget.messageGroupingTimeoutInSeconds,
-        isRemoved: true,
-      ),
+          (context, animation) =>
+          widget.itemBuilder(
+            context,
+            data, // Pass the actual message data being removed.
+            position, // Pass its original position.
+            animation,
+            messagesGroupingMode: widget.messagesGroupingMode,
+            messageGroupingTimeoutInSeconds: widget
+                .messageGroupingTimeoutInSeconds,
+            isRemoved: true,
+          ),
       duration: duration,
     );
   }
 
-  void _onChanged(
-    int position,
-    Message oldData,
-    Message newData,
-    bool animated,
-  ) {
+  void _onChanged(int position,
+      Message oldData,
+      Message newData,
+      bool animated,) {
     _onRemoved(position, oldData, animated);
     _onInserted(position, newData, animated);
   }
@@ -1286,36 +1312,36 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
         switch (op.type) {
           case ChatOperationType.insert:
             assert(
-              op.index != null,
-              'Index must be provided when inserting a message.',
+            op.index != null,
+            'Index must be provided when inserting a message.',
             );
             assert(
-              op.message != null,
-              'Message must be provided when inserting a message.',
+            op.message != null,
+            'Message must be provided when inserting a message.',
             );
             _onInserted(op.index!, op.message!, op.animated);
             break;
           case ChatOperationType.remove:
             assert(
-              op.index != null,
-              'Index must be provided when removing a message.',
+            op.index != null,
+            'Index must be provided when removing a message.',
             );
             assert(
-              op.message != null,
-              'Message must be provided when removing a message.',
+            op.message != null,
+            'Message must be provided when removing a message.',
             );
             _onRemoved(op.index!, op.message!, op.animated);
             break;
           case ChatOperationType.set:
-            // If op.messages is provided (even if empty), it's the new desired state.
-            // If op.messages is null, it signifies that the list should be cleared.
+          // If op.messages is provided (even if empty), it's the new desired state.
+          // If op.messages is null, it signifies that the list should be cleared.
             final newList = op.messages ?? const <Message>[];
 
             final updates = diffutil
                 .calculateDiff<Message>(
-                  MessageListDiff(_oldList, newList),
-                  detectMoves: true,
-                )
+              MessageListDiff(_oldList, newList),
+              detectMoves: true,
+            )
                 .getUpdatesWithData();
 
             for (final update in updates) {
@@ -1324,19 +1350,19 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
             break;
           case ChatOperationType.insertAll:
             assert(
-              op.index != null,
-              'Index must be provided when inserting all messages.',
+            op.index != null,
+            'Index must be provided when inserting all messages.',
             );
             assert(
-              op.messages != null && op.messages!.isNotEmpty,
-              'Messages must be provided and be non-empty when inserting all.',
+            op.messages != null && op.messages!.isNotEmpty,
+            'Messages must be provided and be non-empty when inserting all.',
             );
             _onInsertedAll(op.index!, op.messages!, op.animated);
             break;
           case ChatOperationType.update:
             assert(
-              op.index != null,
-              'Index must be provided when updating a message.',
+            op.index != null,
+            'Index must be provided when updating a message.',
             );
             _oldList[op.index!] = op.message!;
             break;
