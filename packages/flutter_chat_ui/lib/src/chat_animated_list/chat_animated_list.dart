@@ -297,23 +297,37 @@ class _ChatAnimatedListState extends State<ChatAnimatedList>
         return;
       }
 
-      if (widget.scrollToEndAnimationDuration == Duration.zero) {
-        _scrollController.jumpTo(
-          min(
-            _scrollController.offset + height,
-            _scrollController.position.maxScrollExtent,
-          ),
-        );
-      } else {
-        await _scrollController.animateTo(
-          min(
-            _scrollController.offset + height,
-            _scrollController.position.maxScrollExtent,
-          ),
-          duration: widget.scrollToEndAnimationDuration,
-          curve: Curves.linearToEaseOut,
-        );
+      // The list grows by `height` when the keyboard opens. If the user was
+      // already at the bottom, extentAfter is about that growth. Skip the
+      // scroll when they are reading history so the visible message stays put.
+      final double distanceFromBottom = _scrollController.position.extentAfter;
+      final bool isAtBottom = distanceFromBottom < (height + 50.0);
+
+      if (isAtBottom) {
+        if (widget.scrollToEndAnimationDuration == Duration.zero) {
+          _scrollController.jumpTo(
+            height == 0
+                ? max(
+                    _scrollController.offset + height,
+                    _scrollController.position.maxScrollExtent,
+                  )
+                : min(
+                    _scrollController.offset + height,
+                    _scrollController.position.maxScrollExtent,
+                  ),
+          );
+        } else {
+          await _scrollController.animateTo(
+            min(
+              _scrollController.offset + height,
+              _scrollController.position.maxScrollExtent,
+            ),
+            duration: widget.scrollToEndAnimationDuration,
+            curve: Curves.linearToEaseOut,
+          );
+        }
       }
+
       // we don't want to show the scroll to bottom button when automatically scrolling content with keyboard
       _scrollToBottomShowTimer?.cancel();
     });
