@@ -1,3 +1,12 @@
+## 2.12.0
+
+ - **REFACTOR**: replace flutter material imports with material_ui and update package dependencies ([#893](https://github.com/flyerhq/flutter_chat_ui/issues/893)). ([a2f5021b](https://github.com/flyerhq/flutter_chat_ui/commit/a2f5021bcf222dda359c1bdde0b7d6bd7bdad8c0))
+ - **FEAT**: expose cacheExtent on ChatAnimatedList ([#892](https://github.com/flyerhq/flutter_chat_ui/issues/892)). ([7e743f46](https://github.com/flyerhq/flutter_chat_ui/commit/7e743f4649ba6e15ac4ac8fdcd4dd0b4bc0f633c))
+
+## 2.11.1
+
+ - **FIX**: change definition of OnMessageSecondaryTapCallback. ([50ba67e0](https://github.com/flyerhq/flutter_chat_ui/commit/50ba67e07ec8c28167d3702fc0beda8393cbc44d))
+
 ## 2.11.0
 
  - **FIX**: handle null checks for message gesture callbacks in ChatMessage widget ([#861](https://github.com/flyerhq/flutter_chat_ui/issues/861)). ([0a7fe3dd](https://github.com/flyerhq/flutter_chat_ui/commit/0a7fe3dd61ab6310c45774cc28103611df1dd3d3))
